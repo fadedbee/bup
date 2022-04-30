@@ -11,20 +11,11 @@
  * 
  */
 
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash, str};
 
 use num::{BigUint, ToPrimitive};
-//use num::pow::pow;
+use num::pow::pow;
 use lazy_static::lazy_static;
-
-const fn pow(big: BigUint, exp: usize) -> BigUint {
-    if exp == 1 {
-        return big;
-    } else {
-        return pow(big, exp - 1);
-    }
-}
-
 
 // base33 and base62
 const BASE16_ALPHA: [char; 16] = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
@@ -107,60 +98,73 @@ lazy_static! {
     static ref MAX: BigUint = pow(BigUint::from(256u16), BASE256_DIGITS);
 }
 
+#[derive(Clone, Debug)]
 struct TTBytes(BigUint);
 
 impl TTBytes {
     pub fn new(big: BigUint) -> TTBytes {
-        TTBytes(big % MAX.clone())
+        unimplemented!();
     }
 
-    pub fn base62(&self) -> &str {
-        ""
+    pub fn base62(&self) -> String {
+        big_to_base(self.0.clone(), &Base::BASE62, BASE62_DIGITS)
     }
 
-    pub fn base16(&self) -> &str {
-        ""
+    pub fn base16(&self) -> String {
+        big_to_base(self.0.clone(), &Base::BASE16, BASE16_DIGITS)
     }
 
-    pub fn upper_base62(&self) -> &str {
-        ""
+    pub fn upper_base62(&self) -> String {
+        big_to_base(self.0.clone() / PIVOT.clone(), &Base::BASE62, UPPER_BASE62_DIGITS)
     }
 
-    pub fn lower_base33(&self) -> &str {
-        ""
+    pub fn lower_base33(&self) -> String {
+        big_to_base(self.0.clone() % PIVOT.clone(), &Base::BASE33, LOWER_BASE33_DIGITS)
     }
 
-    pub fn lower_dashed_base33(&self) -> &str {
-        ""
+    pub fn lower_dashed_base33(&self) -> String {
+        // TODO: This is less efficient than it might be, because it allocates Results and Vecs.
+        return self
+            .lower_base33()
+            .as_bytes()
+            .chunks(5)
+            .map(str::from_utf8)
+            .collect::<Result<Vec<&str>, _>>()
+            .unwrap()
+            .join("-")
     }
 
-    pub fn bytes(&self) -> [u8; 32] {
-        [0u8; 32]
+    pub fn bytes_be(&self) -> Vec<u8> {
+        self.0.to_bytes_be()
     }
 
     pub fn encrypt(&self, buf: &[u8]) -> Vec<u8> {
-        Vec::new()
+        unimplemented!();
     }
 
     pub fn decrypt(&self, buf: &[u8]) -> Vec<u8> {
-        Vec::new()
+        unimplemented!();
     }
 
-    pub fn from_bytes(u8s: &[u8; 32]) -> TTBytes {
-        TTBytes(BigUint::from_bytes_be(u8s))
+    pub fn from_bytes_be(u8s: &[u8; 32]) -> TTBytes {
+        let big = BigUint::from_bytes_be(u8s);
+        eprintln!("from_bytes_be big {:?}", big);
+        let ttbytes = TTBytes(big);
+        eprintln!("from_bytes_be ttbytes {:?}", &ttbytes);
+        ttbytes
+    }
+
+    pub fn from_bytes_le(u8s: &[u8; 32]) -> TTBytes {
+        unimplemented!();
     }
 
     pub fn from_base62(base62: &str) -> TTBytes {
-        TTBytes(BigUint::from_bytes_be(&[0u8]))
+        unimplemented!();
     }
 
     pub fn from_base62_and_base33(base62: &str, base33: &str) -> TTBytes {
-        TTBytes(BigUint::from_bytes_be(&[0u8]))
+        unimplemented!();
     }
-
-
-
-
 }
 
 
@@ -171,49 +175,38 @@ mod tests {
     #[test]
     fn test_convert_base33_to_buffer() {
         assert_eq!(base_to_big("1234567890ABCDEF", &Base::BASE33).to_bytes_be(),
-            [13, 127, 141, 10, 8, 5, 125, 141, 84, 24]
-        );
+            [13, 127, 141, 10, 8, 5, 125, 141, 84, 24]);
+    }
+
+    #[test]
+    fn test_convert_buffer_to_base62() {
+        assert_eq!(big_to_base(BigUint::from(0u8), &Base::BASE62, BASE62_DIGITS),
+            "0000000000000000000000000000000000000000000");
+        assert_eq!(big_to_base(BigUint::from(1u8), &Base::BASE62, BASE62_DIGITS),
+            "0000000000000000000000000000000000000000001");
+        assert_eq!(big_to_base(BigUint::from(61u8), &Base::BASE62, BASE62_DIGITS),
+            "000000000000000000000000000000000000000000z");
+        assert_eq!(big_to_base(BigUint::from(62u8), &Base::BASE62, BASE62_DIGITS),
+            "0000000000000000000000000000000000000000010");
     }
 
     #[test]
     fn test_convert_buffer_to_base33() {
+        assert_eq!(big_to_base(BigUint::from(0u8), &Base::BASE33, 16), "0000000000000000");
+        assert_eq!(big_to_base(BigUint::from(1u8), &Base::BASE33, 16), "0000000000000001");
+        assert_eq!(big_to_base(BigUint::from(32u8), &Base::BASE33, 16), "000000000000000Z");
+        assert_eq!(big_to_base(BigUint::from(33u8), &Base::BASE33, 16), "0000000000000010");
+        assert_eq!(big_to_base(BigUint::from_bytes_be(&[13, 127, 141, 10, 8, 5, 125, 141, 84, 24]), &Base::BASE33, 16), "1234567890ABCDEF");
     }
 
     #[test]
     fn test_it_works() {
         const ARR: [u8; 32] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32];
-        let ttbytes = &TTBytes::from_bytes(&ARR);
+        let ttbytes = &TTBytes::from_bytes_be(&ARR);
         assert_eq!(ttbytes.base62(), "0Eoh211G4c8wtVWM00my5rsNSFlKgaWqQ4mb8gdEqno");
         assert_eq!(ttbytes.upper_base62(), "0Eoh211G4c8wtVWM00my5r");
         assert_eq!(ttbytes.lower_base33(), "DRD7A3JDHFX5A09F1L24SCDVB");
         assert_eq!(ttbytes.lower_dashed_base33(), "DRD7A-3JDHF-X5A09-F1L24-SCDVB");
-        assert_eq!(ttbytes.bytes(), ARR);
+        assert_eq!(ttbytes.bytes_be(), ARR);
     }
 }
-
-/*
-
-describe('ttbytes', function() {
-  const arr = new Uint8Array([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32]);
-
-  it('should convert a base33 string into a buffer', function() {
-    deepEqual(bigToBuf(baseToBig('1234567890ABCDEF', 33)),
-      new Uint8Array([13, 127, 141, 10, 8, 5, 125, 141, 84, 24]));
-  });
-
-  it('should convert a buffer into a base33 string', function () {
-    deepEqual(bigToBase(bufToBig(new Uint8Array([13, 127, 141, 10, 8, 5, 125, 141, 84, 24])), 33, 16),
-      '1234567890ABCDEF');
-  });
-
-  it('should work', function () {
-    //deepEqual(rev, {});
-    const ttbytes = TTBytes.fromUint8Array(arr);
-    deepEqual(ttbytes.base62, '0Eoh211G4c8wtVWM00my5rsNSFlKgaWqQ4mb8gdEqno');
-    deepEqual(ttbytes.upperAsBase62, '0Eoh211G4c8wtVWM00my5r');
-    deepEqual(ttbytes.lowerAsBase33, 'DRD7A3JDHFX5A09F1L24SCDVB');
-    deepEqual(ttbytes.lowerAsDashedBase33, 'DRD7A-3JDHF-X5A09-F1L24-SCDVB');
-    deepEqual(ttbytes.uint8Array, arr);
-  });
-});
- */
