@@ -16,3 +16,9 @@ qr2term = "*"
 num = "*"
 lazy_static = "*"
 hex = "*"
+rand = "*"
+reqwest = { version = "*", features = ["blocking"] }
+sha2 = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+

@@ -18,6 +18,7 @@ use num::pow::pow;
 use lazy_static::lazy_static;
 use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
 use aes_gcm::aead::{Aead, NewAead};
+use sha2::{Sha256, Digest};
 
 // base33 and base62
 const BASE16_ALPHA: [char; 16] = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
@@ -68,26 +69,26 @@ fn base_to_big(string: &str, base: &Base) -> BigUint {
     let chars = string.as_bytes(); // alphabets cannot contain unicode
     let mut big = BigUint::from(0u8);
     let multiplier = &BigUint::from(*base as u64);
-    eprintln!("chars {:?}", chars);
-    eprintln!("multiplier {:?}", multiplier);
-    eprintln!("*BASE33_REV {:?}", *BASE33_REV);
+    //eprintln!("chars {:?}", chars);
+    //eprintln!("multiplier {:?}", multiplier);
+    //eprintln!("*BASE33_REV {:?}", *BASE33_REV);
     for i in 0..chars.len() {
-        eprintln!("i {:?}", i);
+        //eprintln!("i {:?}", i);
         let index = chars[i] as char;
-        eprintln!("index {:?}", index);
+        //eprintln!("index {:?}", index);
         let value = match base {
             Base::BASE16 => BASE16_REV[&index],
             Base::BASE33 => BASE33_REV[&index],
             Base::BASE62 => BASE62_REV[&index]
         };
-        eprintln!("value {:?}", value);
+        //eprintln!("value {:?}", value);
         big = big * multiplier + value;
-        eprintln!("big {:?}", big);
+        //eprintln!("big {:?}", big);
     }
     big
 }
 
-pub fn iv_from_num(mut num: usize) -> [u8; 12] {
+fn iv_from_num(mut num: usize) -> [u8; 12] {
     let mut iv = [0u8; 12];
     for i in 0..12 {
         iv[i] = (num % 256) as u8;
@@ -108,7 +109,7 @@ lazy_static! {
 }
 
 #[derive(Clone, Debug)]
-struct TTBytes(BigUint);
+pub struct TTBytes(BigUint);
 
 impl TTBytes {
     pub fn base62(&self) -> String {
@@ -163,11 +164,19 @@ impl TTBytes {
         cipher.decrypt(nonce, buf).expect("decryption failure!")
     }
 
+    pub fn hash(&self) -> TTBytes {
+        let mut hasher = Sha256::new();
+        hasher.update(self.bytes_be());
+        let hash_generic_array = hasher.finalize();
+        let hash: &[u8; 32] = hash_generic_array.as_slice().try_into().unwrap();
+        TTBytes::from_bytes_be(hash)
+    }
+
     pub fn from_bytes_be(u8s: &[u8; 32]) -> TTBytes {
         let big = BigUint::from_bytes_be(u8s);
-        eprintln!("from_bytes_be big {:?}", big);
+        //eprintln!("from_bytes_be big {:?}", big);
         let ttbytes = TTBytes(big);
-        eprintln!("from_bytes_be ttbytes {:?}", &ttbytes);
+        //eprintln!("from_bytes_be ttbytes {:?}", &ttbytes);
         ttbytes
     }
 
@@ -228,7 +237,7 @@ mod tests {
         assert_eq!(ttbytes.bytes_be(), ARR);
     }
 
-    const plaintext_string: &[u8; 460] =
+    static PLAINTEXT_STRING: &[u8; 460] =
         b"[{\"name\":\"file2.dat\",\"size\":8389632,\
         \"keys\":[\"SskZy5aMRdY3IDkKw6OEv72LnStZ5ka61QKWSed7aZ7\",\
         \"IRPqhxT0N8btOYp54m590UgXhm9J0j2RV0e85wdLGUg\",\
@@ -239,7 +248,7 @@ mod tests {
         \"6NTUjuX7T6wFB6wRhO4AqFGHKi00nO2PNmKLBjPrbPG\",\
         \"IP5dLpVhHScg4JnkimN5LV6kwHwHUgSAjJqExr9iGDD\",\
         \"wYT0RDa0tXLC8HiNyd1xVpmKjy24aoGjs4wlXQAxScL\"]}]";
-    const ciphertext_hex: &str = 
+    static CIPHERTEXT_HEX: &str = 
         "75\
         c853641eac950750c8a6290d18550920b7b04f58c7e5f3aaeaaca105291f\
         8c6de699836a461fe854e84ebe2622ce2632025a2b77ed015694b58e2fc0\
@@ -257,19 +266,19 @@ mod tests {
         eebbd09f1df0205ac53ba7b4f90519f6cbaa2b68085557bd95650cb33646\
         a88bdb045c8ac2ad47e4799a69d617d1f275715132bee88322d5494ebb95\
         4a17e60ab91bbe46e5666f7d7257894ed05429db84b406ca2f";
-    const key_base62: &str = "VVFscz4Sc7DJenl2JC2Nv4xZEbNZm9685J0EwJ1l3Bs";
+    static KEY_BASE62: &str = "VVFscz4Sc7DJenl2JC2Nv4xZEbNZm9685J0EwJ1l3Bs";
 
     #[test]
     fn test_encryption() {
-        let key = &TTBytes::from_base62(key_base62);
-        let encrypted = key.encrypt(plaintext_string, 0);
-        assert_eq!(encrypted, Vec::from_hex(ciphertext_hex).unwrap());
+        let key = &TTBytes::from_base62(KEY_BASE62);
+        let encrypted = key.encrypt(PLAINTEXT_STRING, 0);
+        assert_eq!(encrypted, Vec::from_hex(CIPHERTEXT_HEX).unwrap());
     }
 
     #[test]
     fn test_decryption() {
-        let key = &TTBytes::from_base62(key_base62);
-        let decrypted = key.decrypt(&Vec::from_hex(ciphertext_hex).unwrap(), 0);
-        assert_eq!(decrypted, plaintext_string);
+        let key = &TTBytes::from_base62(KEY_BASE62);
+        let decrypted = key.decrypt(&Vec::from_hex(CIPHERTEXT_HEX).unwrap(), 0);
+        assert_eq!(decrypted, PLAINTEXT_STRING);
     }
 }
