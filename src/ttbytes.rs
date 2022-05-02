@@ -88,6 +88,7 @@ fn base_to_big(string: &str, base: &Base) -> BigUint {
     big
 }
 
+/*
 fn iv_from_num(mut num: usize) -> [u8; 12] {
     let mut iv = [0u8; 12];
     for i in 0..12 {
@@ -96,6 +97,7 @@ fn iv_from_num(mut num: usize) -> [u8; 12] {
     }
     iv
 }
+*/
 
 const BASE256_DIGITS: usize = 32;
 const BASE16_DIGITS: usize = BASE256_DIGITS * 2;
@@ -149,7 +151,9 @@ impl TTBytes {
         let key = Key::from_slice(&key_bytes);
         let cipher = Aes256Gcm::new(key);
         
-        let iv = iv_from_num(block_num);
+        //let iv = iv_from_num(block_num);
+        //eprintln!("iv {:?}", iv);
+        let iv = [0u8; 12];
         let nonce = Nonce::from_slice(&iv);        
         cipher.encrypt(nonce, buf).expect("encryption failure!")
     }
@@ -159,7 +163,8 @@ impl TTBytes {
         let key = Key::from_slice(&key_bytes);
         let cipher = Aes256Gcm::new(key);
         
-        let iv = iv_from_num(block_num);
+        //let iv = iv_from_num(block_num);
+        let iv = [0u8; 12];
         let nonce = Nonce::from_slice(&iv);        
         cipher.decrypt(nonce, buf).expect("decryption failure!")
     }

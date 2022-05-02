@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, Read, ErrorKind}};
+use std::{fs::File, io::{BufReader, Read, ErrorKind}, path::Path};
 use anyhow::{anyhow, Result};
 //use qr2term;
 //use libc::size_t;
@@ -52,9 +52,10 @@ fn upload_file(filename: &str) -> Result<IndexEntry> {
     let mut buf = [0u8; BLOCK_SIZE];
     let mut final_buf = vec![0u8; len as usize % BLOCK_SIZE];
     let mut keys: Vec<TTBytes> = Vec::new();
+    let num_blocks = ((len - 1)/BLOCK_SIZE as u64) + 1; // FIXME: zero-length files
 
-    for i in 0..(len/BLOCK_SIZE as u64) { // FIXME: do files < 1MB crash this?
-        if i < (len/BLOCK_SIZE as u64) - 1 { // all blocks except last
+    for i in 0..num_blocks {
+        if i < num_blocks - 1 { // all blocks except last
             match reader.read_exact(&mut buf) {
                 Ok(()) => {
                     keys.push(encrypt_and_upload_block(&buf, i as usize)?);
@@ -73,9 +74,11 @@ fn upload_file(filename: &str) -> Result<IndexEntry> {
         }
     }
 
+    let name = Path::new(filename).file_name().unwrap().to_string_lossy().to_string();
+
     Ok (
         IndexEntry {
-            name: filename.to_string(),
+            name,
             size: len,
             keys: keys.iter().map(|x| x.base62()).collect()
         }
