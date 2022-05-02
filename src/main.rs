@@ -1,6 +1,6 @@
 use std::env;
 use url::{self, Url};
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 mod upload;
 mod download;

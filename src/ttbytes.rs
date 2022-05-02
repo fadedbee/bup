@@ -11,12 +11,11 @@
  * 
  */
 
-use std::{collections::HashMap, hash::Hash, str};
+use std::{collections::HashMap, str};
 
 use num::{BigUint, ToPrimitive};
 use num::pow::pow;
 use lazy_static::lazy_static;
-use hex::FromHex;
 use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
 use aes_gcm::aead::{Aead, NewAead};
 
@@ -97,10 +96,6 @@ pub fn iv_from_num(mut num: usize) -> [u8; 12] {
     iv
 }
 
-pub fn foo() -> [u8; 12] {
-    [0u8; 12]
-}
-
 const BASE256_DIGITS: usize = 32;
 const BASE16_DIGITS: usize = BASE256_DIGITS * 2;
 const BASE62_DIGITS: usize = 43;
@@ -116,10 +111,6 @@ lazy_static! {
 struct TTBytes(BigUint);
 
 impl TTBytes {
-    pub fn new(big: BigUint) -> TTBytes {
-        unimplemented!();
-    }
-
     pub fn base62(&self) -> String {
         big_to_base(self.0.clone(), &Base::BASE62, BASE62_DIGITS)
     }
@@ -180,7 +171,7 @@ impl TTBytes {
         ttbytes
     }
 
-    pub fn from_bytes_le(u8s: &[u8; 32]) -> TTBytes {
+    pub fn from_bytes_le(_u8s: &[u8; 32]) -> TTBytes {
         unimplemented!();
     }
 
@@ -188,7 +179,7 @@ impl TTBytes {
         TTBytes(base_to_big(base62, &Base::BASE62))
     }
 
-    pub fn from_base62_and_base33(base62: &str, base33: &str) -> TTBytes {
+    pub fn from_base62_and_base33(_base62: &str, _base33: &str) -> TTBytes {
         unimplemented!();
     }
 }
@@ -197,6 +188,7 @@ impl TTBytes {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex::FromHex;
 
     #[test]
     fn test_convert_base33_to_buffer() {
