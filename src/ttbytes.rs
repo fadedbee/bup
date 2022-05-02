@@ -162,8 +162,14 @@ impl TTBytes {
         cipher.encrypt(nonce, buf).expect("encryption failure!")
     }
 
-    pub fn decrypt(&self, buf: &[u8]) -> Vec<u8> {
-        unimplemented!();
+    pub fn decrypt(&self, buf: &[u8], block_num: usize) -> Vec<u8> {
+        let key_bytes = self.bytes_be();
+        let key = Key::from_slice(&key_bytes);
+        let cipher = Aes256Gcm::new(key);
+        
+        let iv = iv_from_num(block_num);
+        let nonce = Nonce::from_slice(&iv);        
+        cipher.decrypt(nonce, buf).expect("decryption failure!")
     }
 
     pub fn from_bytes_be(u8s: &[u8; 32]) -> TTBytes {
@@ -266,5 +272,12 @@ mod tests {
         let key = &TTBytes::from_base62(key_base62);
         let encrypted = key.encrypt(plaintext_string, 0);
         assert_eq!(encrypted, Vec::from_hex(ciphertext_hex).unwrap());
+    }
+
+    #[test]
+    fn test_decryption() {
+        let key = &TTBytes::from_base62(key_base62);
+        let decrypted = key.decrypt(&Vec::from_hex(ciphertext_hex).unwrap(), 0);
+        assert_eq!(decrypted, plaintext_string);
     }
 }
