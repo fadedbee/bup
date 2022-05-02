@@ -17,6 +17,8 @@ use num::{BigUint, ToPrimitive};
 use num::pow::pow;
 use lazy_static::lazy_static;
 use hex::FromHex;
+use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
+use aes_gcm::aead::{Aead, NewAead};
 
 // base33 and base62
 const BASE16_ALPHA: [char; 16] = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
@@ -86,7 +88,18 @@ fn base_to_big(string: &str, base: &Base) -> BigUint {
     big
 }
 
+pub fn iv_from_num(mut num: usize) -> [u8; 12] {
+    let mut iv = [0u8; 12];
+    for i in 0..12 {
+        iv[i] = (num % 256) as u8;
+        num /= 256;
+    }
+    iv
+}
 
+pub fn foo() -> [u8; 12] {
+    [0u8; 12]
+}
 
 const BASE256_DIGITS: usize = 32;
 const BASE16_DIGITS: usize = BASE256_DIGITS * 2;
@@ -139,8 +152,14 @@ impl TTBytes {
         self.0.to_bytes_be()
     }
 
-    pub fn encrypt(&self, buf: &[u8]) -> Vec<u8> {
-        unimplemented!();
+    pub fn encrypt(&self, buf: &[u8], block_num: usize) -> Vec<u8> {
+        let key_bytes = self.bytes_be();
+        let key = Key::from_slice(&key_bytes);
+        let cipher = Aes256Gcm::new(key);
+        
+        let iv = iv_from_num(block_num);
+        let nonce = Nonce::from_slice(&iv);        
+        cipher.encrypt(nonce, buf).expect("encryption failure!")
     }
 
     pub fn decrypt(&self, buf: &[u8]) -> Vec<u8> {
@@ -160,7 +179,7 @@ impl TTBytes {
     }
 
     pub fn from_base62(base62: &str) -> TTBytes {
-        unimplemented!();
+        TTBytes(base_to_big(base62, &Base::BASE62))
     }
 
     pub fn from_base62_and_base33(base62: &str, base33: &str) -> TTBytes {
@@ -211,39 +230,41 @@ mod tests {
         assert_eq!(ttbytes.bytes_be(), ARR);
     }
 
-    const plaintext_string: &[u8; 460] = b"[{\"name\":\"file2.dat\",\"size\":8389632,\
-\"keys\":[\"SskZy5aMRdY3IDkKw6OEv72LnStZ5ka61QKWSed7aZ7\",\
-\"IRPqhxT0N8btOYp54m590UgXhm9J0j2RV0e85wdLGUg\",\
-\"NQUZLmi3kGqglKIDYoHEfTZ1crwR8j3YkdAWS2S6cVf\",\
-\"L5Y6LssbLHw29QXYS3GyZdogYv6Rwf17RpQ7n49R2nL\",\
-\"dniZe3OpXSSl6Qm9Hopj8KdB1afDPHnVSNVHAqz4Rzf\",\
-\"Kmlv9DbIEy6R8oMDlGh6oOx2aBgjFhCBvUaomiChsuc\",\
-\"6NTUjuX7T6wFB6wRhO4AqFGHKi00nO2PNmKLBjPrbPG\",\
-\"IP5dLpVhHScg4JnkimN5LV6kwHwHUgSAjJqExr9iGDD\",\
-\"wYT0RDa0tXLC8HiNyd1xVpmKjy24aoGjs4wlXQAxScL\"]}]";
-    const ciphertext_hex: &str = r#"75\
-c853641eac950750c8a6290d18550920b7b04f58c7e5f3aaeaaca105291f\
-8c6de699836a461fe854e84ebe2622ce2632025a2b77ed015694b58e2fc0\
-5f432bf354a4b0c752c4f026b974a9b27cbd38296f3a1f272e0723b1604c\
-8eddee036295bc450e32c5c82254e0dc0e2562afbb069dee33ca3b7b3726\
-945003fd4f2d3e7d74e46fecbc5bf99b596c686313867b14a27eb3959277\
-42f7f7cc8b18d3e64342816b51f771bcdcc09897958c9fdc81167f924424\
-0db90f280a72d60776612105acad2251885597dfa79f28b2c295a3c0efe3\
-7c88f7150331f9e359ca179df985342b2aec1142ec3defb3c114519a81a0\
-a2bc1c6bc601aab7bdb2989a781b1f7523c020e4e05ce34df0e818f1ba8f\
-4e36a87d1edf13427cbce994405582b1962955b25329d5daaca4f229bcf5\
-b77efd199d8e24fca1c138275d93d786abcf511089d5880e35b6e2a07851\
-a46918fcf16af5cb9c65432d60f635c35d4a9b2bceb2b80fba27e1f0dd8c\
-d5c077d251de3f65c3318b46f4a50dc9f3c85bafd8dee776b34d470b0a34\
-eebbd09f1df0205ac53ba7b4f90519f6cbaa2b68085557bd95650cb33646\
-a88bdb045c8ac2ad47e4799a69d617d1f275715132bee88322d5494ebb95\
-4a17e60ab91bbe46e5666f7d7257894ed05429db84b406ca2f"#;
+    const plaintext_string: &[u8; 460] =
+        b"[{\"name\":\"file2.dat\",\"size\":8389632,\
+        \"keys\":[\"SskZy5aMRdY3IDkKw6OEv72LnStZ5ka61QKWSed7aZ7\",\
+        \"IRPqhxT0N8btOYp54m590UgXhm9J0j2RV0e85wdLGUg\",\
+        \"NQUZLmi3kGqglKIDYoHEfTZ1crwR8j3YkdAWS2S6cVf\",\
+        \"L5Y6LssbLHw29QXYS3GyZdogYv6Rwf17RpQ7n49R2nL\",\
+        \"dniZe3OpXSSl6Qm9Hopj8KdB1afDPHnVSNVHAqz4Rzf\",\
+        \"Kmlv9DbIEy6R8oMDlGh6oOx2aBgjFhCBvUaomiChsuc\",\
+        \"6NTUjuX7T6wFB6wRhO4AqFGHKi00nO2PNmKLBjPrbPG\",\
+        \"IP5dLpVhHScg4JnkimN5LV6kwHwHUgSAjJqExr9iGDD\",\
+        \"wYT0RDa0tXLC8HiNyd1xVpmKjy24aoGjs4wlXQAxScL\"]}]";
+    const ciphertext_hex: &str = 
+        "75\
+        c853641eac950750c8a6290d18550920b7b04f58c7e5f3aaeaaca105291f\
+        8c6de699836a461fe854e84ebe2622ce2632025a2b77ed015694b58e2fc0\
+        5f432bf354a4b0c752c4f026b974a9b27cbd38296f3a1f272e0723b1604c\
+        8eddee036295bc450e32c5c82254e0dc0e2562afbb069dee33ca3b7b3726\
+        945003fd4f2d3e7d74e46fecbc5bf99b596c686313867b14a27eb3959277\
+        42f7f7cc8b18d3e64342816b51f771bcdcc09897958c9fdc81167f924424\
+        0db90f280a72d60776612105acad2251885597dfa79f28b2c295a3c0efe3\
+        7c88f7150331f9e359ca179df985342b2aec1142ec3defb3c114519a81a0\
+        a2bc1c6bc601aab7bdb2989a781b1f7523c020e4e05ce34df0e818f1ba8f\
+        4e36a87d1edf13427cbce994405582b1962955b25329d5daaca4f229bcf5\
+        b77efd199d8e24fca1c138275d93d786abcf511089d5880e35b6e2a07851\
+        a46918fcf16af5cb9c65432d60f635c35d4a9b2bceb2b80fba27e1f0dd8c\
+        d5c077d251de3f65c3318b46f4a50dc9f3c85bafd8dee776b34d470b0a34\
+        eebbd09f1df0205ac53ba7b4f90519f6cbaa2b68085557bd95650cb33646\
+        a88bdb045c8ac2ad47e4799a69d617d1f275715132bee88322d5494ebb95\
+        4a17e60ab91bbe46e5666f7d7257894ed05429db84b406ca2f";
     const key_base62: &str = "VVFscz4Sc7DJenl2JC2Nv4xZEbNZm9685J0EwJ1l3Bs";
 
     #[test]
     fn test_encryption() {
         let key = &TTBytes::from_base62(key_base62);
-        let encrypted = key.encrypt(plaintext_string);
+        let encrypted = key.encrypt(plaintext_string, 0);
         assert_eq!(encrypted, Vec::from_hex(ciphertext_hex).unwrap());
     }
 }
