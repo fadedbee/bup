@@ -2,7 +2,7 @@
 name = "bup"
 version = "0.1.0"
 authors = ["fadedbee <blindupload@fadedbee.com>"]
-license = "AGPL 3.0"
+license = "AGPL-3.0-only"
 description = "A command-line client for Blind Upload."
 readme = "README.md"
 homepage = "https://github.com/fadedbee/bup"
