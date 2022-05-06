@@ -2,7 +2,7 @@ use std::{str, io::{Read, Write}, path::Path, fs::{File, create_dir_all}};
 use url::Url;
 use reqwest::{self, StatusCode};
 use anyhow::{anyhow, Result};
-use crate::{URL, ttbytes::TTBytes, IndexEntry};
+use crate::{CACHE_URL, ttbytes::TTBytes, IndexEntry};
 use serde_json;
 
 const SLASH_HTML: &[u8] = b"</html>\n";
@@ -44,16 +44,20 @@ fn download_block(url: Url) -> Result<Vec<u8>> {
 }
 
 
-pub fn download(url: Url) -> Result<()> {
+pub fn download(url: Url, opt_code: Option<&str>) -> Result<()> {
     // download index
     let fragment = url.fragment().unwrap_or("");
     //eprintln!("{fragment}");
-    // TODO: check fragment length
+
     println!("downloading and decrypting index from {url}");
 
-    let index_key = TTBytes::from_base62(fragment);
+    let index_key = match (fragment.len(), opt_code) {
+        (43, None) => TTBytes::from_base62(fragment),
+        (22, Some(code)) => TTBytes::from_base62_and_dashed_base33(fragment, code),
+        _ =>  return Err(anyhow!("Bad fragment length of {}.", fragment.len()))
+    };
     let index_block_id = index_key.hash().upper_base62();
-    let index_url = Url::parse(&format!("{URL}/block/{index_block_id}"))?;
+    let index_url = Url::parse(&format!("{CACHE_URL}/block/{index_block_id}"))?;
     let index_block = download_block(index_url)?;
     let index_plaintext = index_key.decrypt(&index_block);
     let index_json = str::from_utf8(&index_plaintext)?;
@@ -73,7 +77,7 @@ pub fn download(url: Url) -> Result<()> {
             println!("block {i}");
             let key = TTBytes::from_base62(&index_entry.keys[i]);
             let block_id = key.hash().upper_base62();
-            let url = Url::parse(&format!("{URL}/block/{block_id}"))?;
+            let url = Url::parse(&format!("{CACHE_URL}/block/{block_id}"))?;
             let block = download_block(url)?;
             let plaintext = key.decrypt(&block);
             // TODO: check block length is BLOCK_SIZE if not final block

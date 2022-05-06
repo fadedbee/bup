@@ -193,8 +193,22 @@ impl TTBytes {
         TTBytes(base_to_big(base62, &Base::BASE62))
     }
 
-    pub fn _from_base62_and_base33(_base62: &str, _base33: &str) -> TTBytes {
-        unimplemented!();
+    pub fn from_base62_and_base33(base62: &str, base33: &str) -> TTBytes {
+        let big = base_to_big(base62, &Base::BASE62) 
+            * PIVOT.clone() + base_to_big(base33, &Base::BASE33);
+        TTBytes(big)
+    }
+
+    pub fn from_base62_and_dashed_base33(base62: &str, dashed_base33: &str) -> TTBytes {
+        let base33 = format!("{}{}{}{}{}",
+            &dashed_base33[0..5],
+            &dashed_base33[6..11],
+            &dashed_base33[12..17],
+            &dashed_base33[18..23],
+            &dashed_base33[24..29]
+        );
+
+        TTBytes::from_base62_and_base33(base62, &base33)
     }
 }
 
@@ -240,6 +254,14 @@ mod tests {
         assert_eq!(ttbytes.lower_base33(), "DRD7A3JDHFX5A09F1L24SCDVB");
         assert_eq!(ttbytes.lower_dashed_base33(), "DRD7A-3JDHF-X5A09-F1L24-SCDVB");
         assert_eq!(ttbytes.bytes_be(), ARR);
+    }
+
+    #[test]
+    fn test_it_from_base62_and_dashed_base_33() {
+        let ttbytes = &TTBytes::from_base62_and_dashed_base33(
+            "0Eoh211G4c8wtVWM00my5r", "DRD7A-3JDHF-X5A09-F1L24-SCDVB"
+        );
+        assert_eq!(ttbytes.base62(), "0Eoh211G4c8wtVWM00my5rsNSFlKgaWqQ4mb8gdEqno");
     }
 
     static PLAINTEXT_STRING: &[u8; 460] =

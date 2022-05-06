@@ -2,7 +2,7 @@ use std::{fs::File, io::{BufReader, Read}, path::Path};
 use anyhow::{anyhow, Result};
 use rand::{rngs::OsRng, RngCore};
 use reqwest;
-use crate::{BLOCK_SIZE, URL, ttbytes::TTBytes, IndexEntry};
+use crate::{BLOCK_SIZE, WWW_URL, CACHE_URL, ttbytes::TTBytes, IndexEntry};
 use serde_json;
 
 fn encrypt_and_upload_block(buf: &[u8], block_num: usize) -> Result<TTBytes> {
@@ -15,7 +15,7 @@ fn encrypt_and_upload_block(buf: &[u8], block_num: usize) -> Result<TTBytes> {
 
     let client = reqwest::blocking::Client::new();
     let block_id = key.hash().upper_base62();
-    let url = format!("{URL}/upload/block/{block_id}");
+    let url = format!("{CACHE_URL}/upload/block/{block_id}");
     let res = client.put(url)
         .body(ciphertext)
         .send()?;
@@ -88,11 +88,23 @@ pub fn upload(filenames: &[String]) -> Result<()> {
     let index_key = encrypt_and_upload_block(index_json.as_bytes(), 0)?;
     println!("processing complete");
 
-    let download_url = format!("{URL}/#{}", index_key.base62());
+    // single key
+    let download_url = format!("{WWW_URL}/#{}", index_key.base62());
     println!("");
     println!("{download_url}");
     println!("");
     qr2term::print_qr(download_url)?;
+
+    // split keys
+    let split_url = format!("{WWW_URL}/#{}", index_key.upper_base62());
+    let code = index_key.lower_dashed_base33();
+    println!("");
+    println!("Split-keys (advanced):");
+    println!("");
+    println!("{split_url}");
+    println!("");
+    println!("Telephone Code: {code}");
+    println!("");
 
     Ok(())
 }
