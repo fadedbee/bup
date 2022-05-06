@@ -21,7 +21,7 @@ use aes_gcm::aead::{Aead, NewAead};
 use sha2::{Sha256, Digest};
 
 // base33 and base62
-const BASE16_ALPHA: [char; 16] = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+//const BASE16_ALPHA: [char; 16] = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
 const BASE33_ALPHA: [char; 33] = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F',
                                   'G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Y',
                                   'Z'];
@@ -38,14 +38,14 @@ fn rev(alpha: &[char]) -> HashMap<char, usize> {
 }
 
 lazy_static! {
-    static ref BASE16_REV: HashMap<char, usize> = rev(&BASE16_ALPHA); 
+    //static ref BASE16_REV: HashMap<char, usize> = rev(&BASE16_ALPHA); 
     static ref BASE33_REV: HashMap<char, usize> = rev(&BASE33_ALPHA); 
     static ref BASE62_REV: HashMap<char, usize> = rev(&BASE62_ALPHA); 
 }
 
 #[derive(Copy, Clone, Debug)]
 enum Base {
-    BASE16 = 16,
+    //BASE16 = 16,
     BASE33 = 33,
     BASE62 = 62
 }
@@ -56,7 +56,7 @@ fn big_to_base(mut big: BigUint, base: &Base, digits: usize) -> String {
     while out.len() < digits {
         let index = (big.clone() % divider).to_usize().expect("divider cannot be bigger than usize");
         out.push(match base {
-            Base::BASE16 => BASE16_ALPHA[index],
+            //Base::BASE16 => BASE16_ALPHA[index],
             Base::BASE33 => BASE33_ALPHA[index],
             Base::BASE62 => BASE62_ALPHA[index]
         });
@@ -77,7 +77,7 @@ fn base_to_big(string: &str, base: &Base) -> BigUint {
         let index = chars[i] as char;
         //eprintln!("index {:?}", index);
         let value = match base {
-            Base::BASE16 => BASE16_REV[&index],
+            //Base::BASE16 => BASE16_REV[&index],
             Base::BASE33 => BASE33_REV[&index],
             Base::BASE62 => BASE62_REV[&index]
         };
@@ -100,7 +100,7 @@ fn iv_from_num(mut num: usize) -> [u8; 12] {
 */
 
 const BASE256_DIGITS: usize = 32;
-const BASE16_DIGITS: usize = BASE256_DIGITS * 2;
+//const BASE16_DIGITS: usize = BASE256_DIGITS * 2;
 const BASE62_DIGITS: usize = 43;
 const UPPER_BASE62_DIGITS: usize = 22;
 const LOWER_BASE62_DIGITS: usize = BASE62_DIGITS - UPPER_BASE62_DIGITS;
@@ -118,22 +118,22 @@ impl TTBytes {
         big_to_base(self.0.clone(), &Base::BASE62, BASE62_DIGITS)
     }
 
-    pub fn base16(&self) -> String {
-        big_to_base(self.0.clone(), &Base::BASE16, BASE16_DIGITS)
-    }
+    //pub fn base16(&self) -> String {
+    //    big_to_base(self.0.clone(), &Base::BASE16, BASE16_DIGITS)
+    //}
 
     pub fn upper_base62(&self) -> String {
         big_to_base(self.0.clone() / PIVOT.clone(), &Base::BASE62, UPPER_BASE62_DIGITS)
     }
 
-    pub fn lower_base33(&self) -> String {
+    pub fn _lower_base33(&self) -> String {
         big_to_base(self.0.clone() % PIVOT.clone(), &Base::BASE33, LOWER_BASE33_DIGITS)
     }
 
-    pub fn lower_dashed_base33(&self) -> String {
+    pub fn _lower_dashed_base33(&self) -> String {
         // TODO: This is less efficient than it might be, because it allocates Results and Vecs.
         return self
-            .lower_base33()
+            ._lower_base33()
             .as_bytes()
             .chunks(5)
             .map(str::from_utf8)
@@ -146,7 +146,7 @@ impl TTBytes {
         self.0.to_bytes_be()
     }
 
-    pub fn encrypt(&self, buf: &[u8], block_num: usize) -> Vec<u8> {
+    pub fn encrypt(&self, buf: &[u8]) -> Vec<u8> {
         let key_bytes = self.bytes_be();
         let key = Key::from_slice(&key_bytes);
         let cipher = Aes256Gcm::new(key);
@@ -158,7 +158,7 @@ impl TTBytes {
         cipher.encrypt(nonce, buf).expect("encryption failure!")
     }
 
-    pub fn decrypt(&self, buf: &[u8], block_num: usize) -> Vec<u8> {
+    pub fn decrypt(&self, buf: &[u8]) -> Vec<u8> {
         let key_bytes = self.bytes_be();
         let key = Key::from_slice(&key_bytes);
         let cipher = Aes256Gcm::new(key);
@@ -185,7 +185,7 @@ impl TTBytes {
         ttbytes
     }
 
-    pub fn from_bytes_le(_u8s: &[u8; 32]) -> TTBytes {
+    pub fn _from_bytes_le(_u8s: &[u8; 32]) -> TTBytes {
         unimplemented!();
     }
 
@@ -193,7 +193,7 @@ impl TTBytes {
         TTBytes(base_to_big(base62, &Base::BASE62))
     }
 
-    pub fn from_base62_and_base33(_base62: &str, _base33: &str) -> TTBytes {
+    pub fn _from_base62_and_base33(_base62: &str, _base33: &str) -> TTBytes {
         unimplemented!();
     }
 }
@@ -237,8 +237,8 @@ mod tests {
         let ttbytes = &TTBytes::from_bytes_be(&ARR);
         assert_eq!(ttbytes.base62(), "0Eoh211G4c8wtVWM00my5rsNSFlKgaWqQ4mb8gdEqno");
         assert_eq!(ttbytes.upper_base62(), "0Eoh211G4c8wtVWM00my5r");
-        assert_eq!(ttbytes.lower_base33(), "DRD7A3JDHFX5A09F1L24SCDVB");
-        assert_eq!(ttbytes.lower_dashed_base33(), "DRD7A-3JDHF-X5A09-F1L24-SCDVB");
+        assert_eq!(ttbytes._lower_base33(), "DRD7A3JDHFX5A09F1L24SCDVB");
+        assert_eq!(ttbytes._lower_dashed_base33(), "DRD7A-3JDHF-X5A09-F1L24-SCDVB");
         assert_eq!(ttbytes.bytes_be(), ARR);
     }
 
@@ -276,14 +276,14 @@ mod tests {
     #[test]
     fn test_encryption() {
         let key = &TTBytes::from_base62(KEY_BASE62);
-        let encrypted = key.encrypt(PLAINTEXT_STRING, 0);
+        let encrypted = key.encrypt(PLAINTEXT_STRING);
         assert_eq!(encrypted, Vec::from_hex(CIPHERTEXT_HEX).unwrap());
     }
 
     #[test]
     fn test_decryption() {
         let key = &TTBytes::from_base62(KEY_BASE62);
-        let decrypted = key.decrypt(&Vec::from_hex(CIPHERTEXT_HEX).unwrap(), 0);
+        let decrypted = key.decrypt(&Vec::from_hex(CIPHERTEXT_HEX).unwrap());
         assert_eq!(decrypted, PLAINTEXT_STRING);
     }
 }

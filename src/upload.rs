@@ -1,33 +1,19 @@
-use std::{fs::File, io::{BufReader, Read, ErrorKind}, path::Path};
+use std::{fs::File, io::{BufReader, Read}, path::Path};
 use anyhow::{anyhow, Result};
-//use qr2term;
-//use libc::size_t;
 use rand::Rng;
 use reqwest;
-use serde::{Deserialize, Serialize};
-use crate::ttbytes::TTBytes;
+use crate::{BLOCK_SIZE, URL, ttbytes::TTBytes, IndexEntry};
 use serde_json;
-
-const BLOCK_SIZE: usize = 1_000_000;
-const URL: &str = "http://localhost:3000";
-
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IndexEntry {
-    name: String,
-    size: u64,
-    keys: Vec<String>
-}
 
 fn encrypt_and_upload_block(buf: &[u8], block_num: usize) -> Result<TTBytes> {
     println!("encrypting and uploading block {}", block_num);
     // TODO: is thread_rng() good enough?
     let key = TTBytes::from_bytes_be(&rand::thread_rng().gen::<[u8; 32]>());
-    let ciphertext = key.encrypt(buf, block_num);
+    let ciphertext = key.encrypt(buf);
 
     let client = reqwest::blocking::Client::new();
     let block_id = key.hash().upper_base62();
-    let url = format!("{}/upload/block/{}", URL, block_id);
+    let url = format!("{URL}/upload/block/{block_id}");
     let res = client.put(url)
         .body(ciphertext)
         .send()?;
@@ -38,13 +24,12 @@ fn encrypt_and_upload_block(buf: &[u8], block_num: usize) -> Result<TTBytes> {
         Ok(key)
     } else {
         // TODO: bail!(MyError::MyVariant { actual: 0, expected: 1 })
-        Err(anyhow!("Upload failed.  Status code: {}.", status))
+        Err(anyhow!("Encryption/upload failed.  Status code: {}.", status))
     }
 }
 
 fn upload_file(filename: &str) -> Result<IndexEntry> {
-    println!("uploading {filename}");
-    //qr2term::print_qr("https://rust-lang.org/");
+    println!("processing {filename}...");
     let file = File::open(filename)?;
 
     let len = file.metadata().unwrap().len();
@@ -93,12 +78,19 @@ pub fn upload(filenames: &[String]) -> Result<()> {
         index.push(entry);
     }
 
+    println!("processing index...");
     let index_json = serde_json::to_string(&index).unwrap();
-    eprintln!("index: {:?}", index_json);
+    //eprintln!("index: {:?}", index_json);
 
     // TODO: upload JSON index 
     let index_key = encrypt_and_upload_block(index_json.as_bytes(), 0)?;
-    println!("{}/#{}", URL, index_key.base62());
+    println!("processing complete");
+
+    let download_url = format!("{URL}/#{}", index_key.base62());
+    println!("");
+    println!("{download_url}");
+    println!("");
+    qr2term::print_qr(download_url)?;
 
     Ok(())
 }
