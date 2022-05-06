@@ -1,2 +1,2 @@
 # bup
-A command-line client for Blind Upload.
+A command-line client for [Blind Upload](https://www.blindupload.org).
