@@ -1,6 +1,6 @@
 use std::{fs::File, io::{BufReader, Read}, path::Path};
 use anyhow::{anyhow, Result};
-use rand::Rng;
+use rand::{rngs::OsRng, RngCore};
 use reqwest;
 use crate::{BLOCK_SIZE, URL, ttbytes::TTBytes, IndexEntry};
 use serde_json;
@@ -8,7 +8,9 @@ use serde_json;
 fn encrypt_and_upload_block(buf: &[u8], block_num: usize) -> Result<TTBytes> {
     println!("encrypting and uploading block {}", block_num);
     // TODO: is thread_rng() good enough?
-    let key = TTBytes::from_bytes_be(&rand::thread_rng().gen::<[u8; 32]>());
+    let mut rng_buf = [0u8; 32];
+    OsRng.fill_bytes(&mut rng_buf);
+    let key = TTBytes::from_bytes_be(&rng_buf);
     let ciphertext = key.encrypt(buf);
 
     let client = reqwest::blocking::Client::new();
