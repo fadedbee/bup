@@ -126,14 +126,14 @@ impl TTBytes {
         big_to_base(self.0.clone() / PIVOT.clone(), &Base::BASE62, UPPER_BASE62_DIGITS)
     }
 
-    pub fn _lower_base33(&self) -> String {
+    pub fn lower_base33(&self) -> String {
         big_to_base(self.0.clone() % PIVOT.clone(), &Base::BASE33, LOWER_BASE33_DIGITS)
     }
 
-    pub fn _lower_dashed_base33(&self) -> String {
+    pub fn lower_dashed_base33(&self) -> String {
         // TODO: This is less efficient than it might be, because it allocates Results and Vecs.
         return self
-            ._lower_base33()
+            .lower_base33()
             .as_bytes()
             .chunks(5)
             .map(str::from_utf8)
@@ -237,8 +237,8 @@ mod tests {
         let ttbytes = &TTBytes::from_bytes_be(&ARR);
         assert_eq!(ttbytes.base62(), "0Eoh211G4c8wtVWM00my5rsNSFlKgaWqQ4mb8gdEqno");
         assert_eq!(ttbytes.upper_base62(), "0Eoh211G4c8wtVWM00my5r");
-        assert_eq!(ttbytes._lower_base33(), "DRD7A3JDHFX5A09F1L24SCDVB");
-        assert_eq!(ttbytes._lower_dashed_base33(), "DRD7A-3JDHF-X5A09-F1L24-SCDVB");
+        assert_eq!(ttbytes.lower_base33(), "DRD7A3JDHFX5A09F1L24SCDVB");
+        assert_eq!(ttbytes.lower_dashed_base33(), "DRD7A-3JDHF-X5A09-F1L24-SCDVB");
         assert_eq!(ttbytes.bytes_be(), ARR);
     }
 

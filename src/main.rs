@@ -31,10 +31,23 @@ fn main() -> Result<()> {
         } else { // assume they're all filenames
             upload::upload(&args[1..])?;
         }
-    } else { // no arguments
-        eprintln!("
+    } else if args.len() == 1 { // no arguments
+        eprintln!("bup version {}
+
+{}
+
+{}
+
 Usage: bup URL                      # download and decrypt
-       bup FILENAME [FILENAMES...]  # encrypt and upload");
+       bup FILENAME [FILENAMES...]  # encrypt and upload", 
+            env!("CARGO_PKG_VERSION"),
+            env!("CARGO_PKG_DESCRIPTION"),
+            env!("CARGO_PKG_HOMEPAGE"),
+        );
+    } else {
+        // This will never be executed, but it allows us to keep code which we may need in future
+        // without warnings being displayed at compilation time.
+        ttbytes::TTBytes::from_bytes_be(&[0u8; 32]).lower_dashed_base33();
     }
 
     Ok(())
