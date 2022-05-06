@@ -1,24 +1,32 @@
 [package]
 name = "bup"
 version = "0.1.0"
+authors = ["fadedbee <blindupload@fadedbee.com>"]
+license = "AGPL 3.0"
+description = "A command-line client for Blind Upload."
+readme = "README.md"
+homepage = "https://github.com/fadedbee/bup"
+repository = "https://github.com/fadedbee/bup"
+keywords = ["cli", "upload", "aes256"]
+categories = ["command-line-utilities"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "*", features = ["derive"] }
-anyhow = "*"
-shellexpand = "*"
-url = "*"
-libc = "*"
-aes-gcm = "*"
-qr2term = "*"
-num = "*"
-lazy_static = "*"
-hex = "*"
-rand = "*"
-reqwest = { version = "*", features = ["blocking"] }
-sha2 = "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
+clap = { version = "3.1.8", features = ["derive"] }
+anyhow = "1.0.56"
+shellexpand = "2.1.0"
+url = "2.2.2"
+libc = "0.2.122"
+aes-gcm = "0.9.4"
+qr2term = "0.3.0"
+num = "0.4.0"
+lazy_static = "1.4.0"
+hex = "0.4.3"
+rand = "0.8.5"
+reqwest = { version = "0.11.10", features = ["blocking"] }
+sha2 = "0.10.2"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.80"
 
