@@ -24,7 +24,7 @@ fn main() -> Result<()> {
     // upload depeneding on whether the first srgument is a URL (to save the user some typing)
     let mut args: Vec<String> = env::args().collect();
 
-    eprintln!("{:?}", args);
+    //eprintln!("{:?}", args);
 
     // are any of the arguments --split-key
     let num_before = args.len();
