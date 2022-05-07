@@ -1,12 +1,18 @@
 use std::{str, io::{Read, Write}, path::Path, fs::{File, create_dir_all}};
 use url::Url;
 use reqwest::{self, StatusCode};
-use anyhow::{anyhow, Result};
+use anyhow::{ensure, anyhow, Result};
 use crate::{CACHE_URL, ttbytes::TTBytes, IndexEntry};
 use serde_json;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 const SLASH_HTML: &[u8] = b"</html>\n";
 const TAIL_LENGTH: usize = 32;
+
+lazy_static! {
+    static ref CODE_REGEX: Regex = Regex::new("[0-9A-HJ-NP-TV-Za-hj-np-tv-z]{5}-[0-9A-HJ-NP-TV-Za-hj-np-tv-z]{5}-[0-9A-HJ-NP-TV-Za-hj-np-tv-z]{5}-[0-9A-HJ-NP-TV-Za-hj-np-tv-z]{5}-[0-9A-HJ-NP-TV-Za-hj-np-tv-z]{5}").unwrap();
+}
 
 fn download_block(url: Url) -> Result<Vec<u8>> {
     //eprintln!("downloading {url}");
@@ -51,11 +57,22 @@ pub fn download(url: Url, opt_code: Option<&str>) -> Result<()> {
 
     println!("downloading and decrypting index from {url}");
 
+    if let Some(code) = opt_code {
+        ensure!(CODE_REGEX.is_match(code),
+            "telephone code must be of the format XXXXX-XXXXX-XXXXX-XXXXX-XXXXX");
+    }
+
     let index_key = match (fragment.len(), opt_code) {
         (43, None) => TTBytes::from_base62(fragment),
         (22, Some(code)) => TTBytes::from_base62_and_dashed_base33(fragment, code),
-        _ =>  return Err(anyhow!("Bad fragment length of {}.", fragment.len()))
+        (_, None)  =>  return Err(anyhow!("Bad fragment length of {}, expected 43 chars.", fragment.len())),
+        (_, Some(_))  =>  return Err(anyhow!("Bad fragment length of {}, expected 22 chars.", fragment.len()))
     };
+
+    if let Some(_) = opt_code {
+        println!("using index_key {}", index_key.base62());
+    }
+
     let index_block_id = index_key.hash().upper_base62();
     let index_url = Url::parse(&format!("{CACHE_URL}/block/{index_block_id}"))?;
     let index_block = download_block(index_url)?;

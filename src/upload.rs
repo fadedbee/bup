@@ -72,7 +72,7 @@ fn upload_file(filename: &str) -> Result<IndexEntry> {
     )
 }
 
-pub fn upload(filenames: &[String]) -> Result<()> {
+pub fn upload(filenames: &[String], split_key: bool) -> Result<()> {
     let mut index: Vec<IndexEntry> = Vec::new();
 
     for filename in filenames {
@@ -88,23 +88,24 @@ pub fn upload(filenames: &[String]) -> Result<()> {
     let index_key = encrypt_and_upload_block(index_json.as_bytes(), 0)?;
     println!("processing complete");
 
-    // single key
-    let download_url = format!("{WWW_URL}/#{}", index_key.base62());
-    println!("");
-    println!("{download_url}");
-    println!("");
-    qr2term::print_qr(download_url)?;
-
-    // split keys
-    let split_url = format!("{WWW_URL}/#{}", index_key.upper_base62());
-    let code = index_key.lower_dashed_base33();
-    println!("");
-    println!("Split-keys (advanced):");
-    println!("");
-    println!("{split_url}");
-    println!("");
-    println!("Telephone Code: {code}");
-    println!("");
+    if !split_key { // single key
+        let download_url = format!("{WWW_URL}/#{}", index_key.base62());
+        println!("");
+        qr2term::print_qr(&download_url)?;
+        println!("");
+        println!("{download_url}");
+        println!("");
+    } else { // split keys
+        let split_url = format!("{WWW_URL}/#{}", index_key.upper_base62());
+        let code = index_key.lower_dashed_base33();
+        println!("");
+        qr2term::print_qr(&split_url)?;
+        println!("");
+        println!("{split_url}");
+        println!("");
+        println!("Telephone Code: {code}");
+        println!("");
+    }
 
     Ok(())
 }
